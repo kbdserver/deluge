@@ -897,9 +897,12 @@ class Torrent(object):
                     lsd_peers += 1
         ret.append(
             {
-                'sum_dht_peers': '{:d} / {:d}'.format(dht_seeds, dht_peers),
-                'sum_pex_peers': '{:d} / {:d}'.format(pex_seeds, pex_peers),
-                'sum_lsd_peers': '{:d} / {:d}'.format(lsd_seeds, lsd_peers),
+                'dht_seeds': dht_seeds,
+                'dht_peers': dht_peers,
+                'pex_seeds': pex_seeds,
+                'pex_peers': pex_peers,
+                'lsd_seeds': lsd_seeds,
+                'lsd_peers': lsd_peers,
             }
         )
         return ret

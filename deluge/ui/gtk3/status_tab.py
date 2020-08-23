@@ -112,9 +112,16 @@ class StatusTab(Tab):
                 widget[0].set_text(txt)
 
         # Update extra widgets
-        self.main_builder.get_object('summary_dht_peers').set_text(status['sum_peers'][0]['sum_dht_peers'])
-        self.main_builder.get_object('summary_pex_peers').set_text(status['sum_peers'][0]['sum_pex_peers'])
-        self.main_builder.get_object('summary_lsd_peers').set_text(status['sum_peers'][0]['sum_lsd_peers'])
+        peers = status['sum_peers'][0]
+        self.main_builder.get_object('summary_dht_peers').set_text(
+            '{:d} / {:d}'.format(peers['dht_seeds'], peers['dht_peers'])
+        )
+        self.main_builder.get_object('summary_pex_peers').set_text(
+            '{:d} / {:d}'.format(peers['pex_seeds'], peers['pex_peers'])
+        )
+        self.main_builder.get_object('summary_lsd_peers').set_text(
+            '{:d} / {:d}'.format(peers['lsd_seeds'], peers['lsd_peers'])
+        )
 
         # Update progress bar seperately as it's a special case (not a label).
         fraction = status['progress'] / 100
