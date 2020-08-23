@@ -62,12 +62,6 @@ class MenuBar(component.Component):
         torrent_options_menu = self.builder.get_object('options_torrent_menu')
         self.builder.get_object('menuitem_options').set_submenu(torrent_options_menu)
 
-        self.builder.get_object('download-limit-image').set_from_file(
-            deluge.common.get_pixmap('downloading16.png')
-        )
-        self.builder.get_object('upload-limit-image').set_from_file(
-            deluge.common.get_pixmap('seeding16.png')
-        )
 
         for menuitem in (
             'menuitem_down_speed',
@@ -447,13 +441,13 @@ class MenuBar(component.Component):
                 _('Download Speed Limit'),
                 _('Set the maximum download speed'),
                 _('KiB/s'),
-                'downloading.svg',
+                'downloading',
             ],
             'menuitem_up_speed': [
                 _('Upload Speed Limit'),
                 _('Set the maximum upload speed'),
                 _('KiB/s'),
-                'seeding.svg',
+                'seeding',
             ],
             'menuitem_max_connections': [
                 _('Incoming Connections'),

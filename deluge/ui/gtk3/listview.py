@@ -729,6 +729,7 @@ class ListView(object):
         if col_types is None:
             col_types = [float, str]
         render = Gtk.CellRendererProgress()
+        render.set_padding(0, 1)
         self.add_column(
             header,
             render,

@@ -587,22 +587,37 @@ class Torrent(object):
             for tracker in self.handle.trackers():
                 log.debug(' [tier %s]: %s', tracker['tier'], tracker['url'])
         # Set the tracker list in the torrent object
-        self.trackers = trackers
+        self.trackers = self.handle.trackers()
         if len(trackers) > 0:
             # Force a re-announce if there is at least 1 tracker
-            self.force_reannounce()
+            # replace_trackers(tracker_list) func will reannounce new trackers list
+            # self.force_reannounce()
+            pass
         self.tracker_host = None
 
-    def set_tracker_status(self, status):
+    def set_tracker_status(self, status, tracker_url):
         """Sets the tracker status.
 
         Args:
-            status (str): The tracker status.
+            status (str): The tracker status and url
 
         Emits:
             TorrentTrackerStatusEvent upon tracker status change.
 
         """
+
+        self.update_status(self.handle.status())
+        for tracker in self.handle.trackers():
+            if tracker_url == tracker['url']:
+                for current_tracker in self.trackers:
+                    if tracker_url == current_tracker['url']:
+                        current_tracker.update(tracker)
+                        current_tracker['message'] = status
+                        if status == 'Announce OK':
+                            current_tracker['scrape_complete'] = self.status.num_complete
+                            current_tracker['scrape_incomplete'] = self.status.num_incomplete
+                        break
+                break
 
         self.tracker_host = None
 
@@ -800,12 +815,13 @@ class Torrent(object):
                     "progress": float,
                     "seed": bool,
                     "up_speed": int
+                    "flags": str
                 }
         """
         ret = []
         peers = self.handle.get_peer_info()
-
         for peer in peers:
+
             # We do not want to report peers that are half-connected
             if peer.flags & peer.connecting or peer.flags & peer.handshake:
                 continue
@@ -829,6 +845,16 @@ class Torrent(object):
                     )
                 except TypeError:
                     country = ''
+            flags = ''
+            flags = {
+                peer.flags & 65536 > 0: 'I2P',
+                peer.flags & 131072 > 0: 'uTP',
+                peer.flags & 262144 > 0: 'SSL',
+                peer.connection_type & peer.web_seed > 0: 'WEB',
+            }.get(True, 'BT')
+
+            if peer.flags & peer.rc4_encrypted:
+                flags += ' E'
 
             ret.append(
                 {
@@ -839,9 +865,43 @@ class Torrent(object):
                     'progress': peer.progress,
                     'seed': peer.flags & peer.seed,
                     'up_speed': peer.payload_up_speed,
+                    'flags': flags,
                 }
             )
+        return ret
 
+    def get_sum_peers(self):
+        """Get the calculated number of dht, pex, lsd peers for this torrent.
+
+        Returns:
+            list of dict: DHT, PEX, LSD peers number.
+
+        """
+        ret = []
+        dht_peers = dht_seeds = pex_peers = pex_seeds = lsd_peers = lsd_seeds = 0
+        for peer in self.handle.get_peer_info():
+            if peer.source & peer.dht:
+                if peer.flags & peer.seed:
+                    dht_seeds += 1
+                else:
+                    dht_peers += 1
+            if peer.source & peer.pex:
+                if peer.flags & peer.seed:
+                    pex_seeds += 1
+                else:
+                    pex_peers += 1
+            if peer.source & peer.lsd:
+                if peer.flags & peer.seed:
+                    lsd_seeds += 1
+                else:
+                    lsd_peers += 1
+        ret.append(
+            {
+                'sum_dht_peers': '{:d} / {:d}'.format(dht_seeds, dht_peers),
+                'sum_pex_peers': '{:d} / {:d}'.format(pex_seeds, pex_peers),
+                'sum_lsd_peers': '{:d} / {:d}'.format(lsd_seeds, lsd_peers),
+            }
+        )
         return ret
 
     def get_queue_position(self):
@@ -1133,6 +1193,7 @@ class Torrent(object):
             'orig_files': self.get_orig_files,
             'is_seed': lambda: self.status.is_seeding,
             'peers': self.get_peers,
+            'sum_peers': self.get_sum_peers,
             'queue': lambda: self.status.queue_position,
             'ratio': self.get_ratio,
             'completed_time': lambda: self.status.completed_time,

@@ -17,13 +17,15 @@ from deluge.configmanager import ConfigManager
 
 from .piecesbar import PiecesBar
 from .tab_data_funcs import (
-    fdate_or_never,
+    fdate_or_dash,
     fpcnt,
     fratio,
     fseed_rank_or_dash,
     fspeed_max,
     ftime_or_dash,
     ftotal_sized,
+    fpieces_num_size,
+    fyes_no,
 )
 from .torrentdetails import Tab, TabWidget
 
@@ -43,7 +45,7 @@ class StatusTab(Tab):
         self.add_tab_widget(
             'summary_total_downloaded',
             ftotal_sized,
-            ('all_time_download', 'total_payload_download'),
+            ('total_done', 'total_payload_download'),
         )
         self.add_tab_widget(
             'summary_total_uploaded',
@@ -66,16 +68,14 @@ class StatusTab(Tab):
         self.add_tab_widget('summary_share_ratio', fratio, ('ratio',))
         self.add_tab_widget('summary_active_time', ftime_or_dash, ('active_time',))
         self.add_tab_widget('summary_seed_time', ftime_or_dash, ('seeding_time',))
-        self.add_tab_widget(
-            'summary_seed_rank', fseed_rank_or_dash, ('seed_rank', 'seeding_time')
-        )
+        self.add_tab_widget('summary_seed_rank', fseed_rank_or_dash, ('seed_rank', 'seeding_time'))
         self.add_tab_widget('progressbar', fpcnt, ('progress', 'state', 'message'))
-        self.add_tab_widget(
-            'summary_last_seen_complete', fdate_or_never, ('last_seen_complete',)
-        )
-        self.add_tab_widget(
-            'summary_last_transfer', ftime_or_dash, ('time_since_transfer',)
-        )
+        self.add_tab_widget('summary_last_seen_complete', fdate_or_dash, ('last_seen_complete',))
+        self.add_tab_widget('summary_last_transfer', ftime_or_dash, ('time_since_transfer',))
+        self.add_tab_widget('summary_pieces', fpieces_num_size, ('num_pieces', 'piece_length'))
+        self.add_tab_widget('summary_completed', fdate_or_dash, ('completed_time',))
+        self.add_tab_widget('summary_date_added', fdate_or_dash, ('time_added',))
+        self.add_tab_widget('summary_auto_managed', fyes_no, ('is_auto_managed',))
 
         self.config.register_set_function(
             'show_piecesbar', self.on_show_piecesbar_config_changed, apply_now=True
@@ -92,6 +92,7 @@ class StatusTab(Tab):
 
         # Get the torrent status
         status_keys = self.status_keys
+        status_keys.extend(['sum_peers'])
         if self.config['show_piecesbar']:
             status_keys.extend(['pieces', 'num_pieces'])
 
@@ -109,6 +110,11 @@ class StatusTab(Tab):
             txt = self.widget_status_as_fstr(widget, status)
             if decode_bytes(widget[0].get_text()) != txt:
                 widget[0].set_text(txt)
+
+        # Update extra widgets
+        self.main_builder.get_object('summary_dht_peers').set_text(status['sum_peers'][0]['sum_dht_peers'])
+        self.main_builder.get_object('summary_pex_peers').set_text(status['sum_peers'][0]['sum_pex_peers'])
+        self.main_builder.get_object('summary_lsd_peers').set_text(status['sum_peers'][0]['sum_lsd_peers'])
 
         # Update progress bar seperately as it's a special case (not a label).
         fraction = status['progress'] / 100

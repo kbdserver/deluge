@@ -15,6 +15,9 @@ from functools import partial
 import deluge.common as common
 import deluge.component as component
 
+from gi.repository import Gtk, Gdk
+from gi.repository.GdkPixbuf import Pixbuf
+
 from .common import (
     create_blank_pixbuf,
     get_pixbuf_at_size,
@@ -74,7 +77,7 @@ def cell_data_statusicon(column, cell, model, row, data):
         original_filters = warnings.filters[:]
         warnings.simplefilter('ignore')
         try:
-            cell.set_property('pixbuf', icon)
+            cell.set_property("icon-name", icon)
         finally:
             warnings.filters = original_filters
 

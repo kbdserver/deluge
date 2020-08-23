@@ -11,8 +11,10 @@ from __future__ import unicode_literals
 
 import logging
 import os.path
+import cairo
 
 from gi.repository.GdkPixbuf import Pixbuf
+from gi.repository.Gdk import cairo_set_source_pixbuf
 from gi.repository.Gtk import (
     Builder,
     CellRendererPixbuf,
@@ -21,6 +23,9 @@ from gi.repository.Gtk import (
     ListStore,
     TreeViewColumn,
     TreeViewColumnSizing,
+    Orientation,
+    Label,
+    Box,
 )
 
 import deluge.common
@@ -50,6 +55,17 @@ except ImportError:
 
 log = logging.getLogger(__name__)
 
+scale = component.get('MainWindow').window.get_scale_factor()
+
+peer_flags = {
+    'BT': 'Bittorrent connection',
+    'I2P': 'I2P connection',
+    'uTP': 'uTP connection',
+    'SSL': 'SSL connection',
+    'WEB': 'WEB connection',
+    'E': 'Encrypted connection',
+}
+
 
 class PeersTab(Tab):
     def __init__(self):
@@ -65,7 +81,7 @@ class PeersTab(Tab):
 
         # flag, ip, client, downspd, upspd, country code, int_ip, seed/peer icon, progress
         self.liststore = ListStore(
-            Pixbuf, str, str, int, int, str, float, Pixbuf, float
+            Pixbuf, str, str, int, int, str, float, str, float, str
         )
         self.cached_flag_pixbufs = {}
 
@@ -79,12 +95,12 @@ class PeersTab(Tab):
         column = TreeViewColumn()
         render = CellRendererPixbuf()
         column.pack_start(render, False)
-        column.add_attribute(render, 'pixbuf', 0)
+        column.set_cell_data_func(render, self.cell_flag_icon, 5)
         column.set_sort_column_id(5)
         column.set_clickable(True)
         column.set_resizable(True)
         column.set_expand(False)
-        column.set_min_width(20)
+        column.set_min_width(40)
         column.set_reorderable(True)
         self.listview.append_column(column)
 
@@ -92,7 +108,7 @@ class PeersTab(Tab):
         column = TreeViewColumn(_('Address'))
         render = CellRendererPixbuf()
         column.pack_start(render, False)
-        column.add_attribute(render, 'pixbuf', 7)
+        column.add_attribute(render, 'icon-name', 7)
         render = CellRendererText()
         column.pack_start(render, False)
         column.add_attribute(render, 'text', 1)
@@ -117,9 +133,27 @@ class PeersTab(Tab):
         column.set_reorderable(True)
         self.listview.append_column(column)
 
+        # Connection type column
+        column = TreeViewColumn(_('Connection'))
+        render = CellRendererPixbuf()
+        column.pack_start(render, False)
+        column.set_cell_data_func(render, self.cell_encrypt_icon, 9)
+        # render.set_property('xpad', 5)
+        render = CellRendererText()
+        column.pack_start(render, False)
+        column.add_attribute(render, 'text', 9)
+        column.set_sort_column_id(9)
+        column.set_clickable(True)
+        column.set_resizable(True)
+        column.set_expand(False)
+        column.set_min_width(100)
+        column.set_reorderable(True)
+        self.listview.append_column(column)
+
         # Progress column
         column = TreeViewColumn(_('Progress'))
         render = CellRendererProgress()
+        render.set_padding(0, 1)
         column.pack_start(render, True)
         column.set_cell_data_func(render, cell_data_peer_progress, 8)
         column.set_sort_column_id(8)
@@ -245,13 +279,11 @@ class PeersTab(Tab):
         if country not in self.cached_flag_pixbufs:
             # We haven't created a pixbuf for this country yet
             try:
-                self.cached_flag_pixbufs[country] = Pixbuf.new_from_file(
+                self.cached_flag_pixbufs[country] = Pixbuf.new_from_file_at_scale(
                     deluge.common.resource_filename(
                         'deluge',
-                        os.path.join(
-                            'ui', 'data', 'pixmaps', 'flags', country.lower() + '.png'
-                        ),
-                    )
+                        os.path.join('ui', 'data', 'pixmaps', 'flags', country.lower() + '.svg'),
+                    ), -1, 16 * scale, True
                 )
             except Exception as ex:
                 log.debug('Unable to load flag: %s', ex)
@@ -262,6 +294,8 @@ class PeersTab(Tab):
     def _on_get_torrent_status(self, status):
         new_ips = set()
         for peer in status['peers']:
+            if peer['country'] == '':
+                peer['country'] = 'AQ'
             new_ips.add(peer['ip'])
             if peer['ip'] in self.peers:
                 # We already have this peer in our list, so lets just update it
@@ -270,7 +304,7 @@ class PeersTab(Tab):
                     # This iter is invalid, delete it and continue to next iteration
                     del self.peers[peer['ip']]
                     continue
-                values = self.liststore.get(row, 3, 4, 5, 7, 8)
+                values = self.liststore.get(row, 3, 4, 5, 7, 8, 9)
                 if peer['down_speed'] != values[0]:
                     self.liststore.set_value(row, 3, peer['down_speed'])
                 if peer['up_speed'] != values[1]:
@@ -280,10 +314,12 @@ class PeersTab(Tab):
                     self.liststore.set_value(
                         row, 0, self.get_flag_pixbuf(peer['country'])
                     )
+                if peer['flags'] != values[5]:
+                    self.liststore.set_value(row, 9, peer['flags'])
                 if peer['seed']:
-                    icon = self.seed_pixbuf
+                    icon = icon_seeding
                 else:
-                    icon = self.peer_pixbuf
+                    icon = icon_downloading
 
                 if icon != values[3]:
                     self.liststore.set_value(row, 7, icon)
@@ -331,6 +367,7 @@ class PeersTab(Tab):
                         float(ip_int),
                         icon,
                         peer['progress'],
+                        peer['flags'],
                     ]
                 )
 
@@ -348,21 +385,33 @@ class PeersTab(Tab):
         """This is a callback for showing the right-click context menu."""
         log.debug('on_button_press_event')
         # We only care about right-clicks
-        if self.torrent_id and event.button == 3:
+        if event.button == 3 and event.window == self.listview.get_bin_window():
             self.peer_menu.popup(None, None, None, None, event.button, event.time)
             return True
 
     def _on_query_tooltip(self, widget, x, y, keyboard_tip, tooltip):
-        is_tooltip, x, y, model, path, _iter = widget.get_tooltip_context(
-            x, y, keyboard_tip
-        )
-        if is_tooltip:
-            country_code = model.get(_iter, 5)[0]
-            if country_code != '  ' and country_code in COUNTRIES:
-                tooltip.set_text(COUNTRIES[country_code])
-                # widget here is self.listview
-                widget.set_tooltip_cell(tooltip, path, widget.get_column(0), None)
-                return True
+        tooltip_row, x, y, model, path, _iter = widget.get_tooltip_context(
+            x, y, keyboard_tip)
+        if tooltip_row:
+            column = widget.get_path_at_pos(x, y)[1]
+            if column.get_title() == '':
+                country_code = model.get(_iter, 5)[0]
+                if country_code != '  ' and country_code in COUNTRIES:
+                    tooltip.set_text(COUNTRIES[country_code])
+                    # widget here is self.listview
+                    widget.set_tooltip_cell(tooltip, path, column, None)
+                    return True
+            elif column.get_title() == 'Connection':
+                flags = model.get_value(_iter, 9)
+                if flags != '':
+                    text = ''
+                    for item in flags.split(' '):
+                        if item:
+                            text += item + ' --> ' + peer_flags[item] + '\n'
+
+                    tooltip.set_text(text[:-1])
+                    widget.set_tooltip_cell(tooltip, path, column, None,)
+                    return True
         return False
 
     def on_menuitem_add_peer_activate(self, menuitem):
@@ -389,3 +438,30 @@ class PeersTab(Tab):
 
         peer_dialog.destroy()
         return True
+
+    def cell_flag_icon(self, column, cell, model, row, data):
+        country = self.liststore.get_value(row, 5)
+        pix = self.get_flag_pixbuf(country)
+        if not pix:
+            cell.set_property("surface", None)
+            return
+
+        w = pix.get_width()
+        h = pix.get_height()
+        surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
+        surface.set_device_scale(scale, scale)
+        cr = cairo.Context(surface)
+        cr.scale(1.0 / scale, 1.0 / scale)
+        cairo_set_source_pixbuf(cr, pix, 0, 0)
+        cr.paint_with_alpha(0.9)
+        cr.rectangle(0, 0, w, h)
+        cr.set_source_rgba(0.2, 0.2, 0.2, 1)
+        cr.set_line_width(scale)
+        cr.stroke()
+        cell.set_property("surface", surface)
+
+    def cell_encrypt_icon(self, column, cell, model, row, data):
+        if model.get_value(row, data).find(' E') != -1:
+            cell.set_property("icon-name", 'channel-secure-symbolic')
+        else:
+            cell.set_property("icon-name", None)

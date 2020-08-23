@@ -123,12 +123,6 @@ class SystemTray(component.Component):
             self.tray.connect('activate', self.on_tray_clicked)
             self.tray.connect('popup-menu', self.on_tray_popup)
 
-        self.builder.get_object('download-limit-image').set_from_file(
-            get_pixmap('downloading16.png')
-        )
-        self.builder.get_object('upload-limit-image').set_from_file(
-            get_pixmap('seeding16.png')
-        )
 
         client.register_event_handler(
             'ConfigValueChangedEvent', self.config_value_changed
@@ -396,7 +390,7 @@ class SystemTray(component.Component):
             'max_download_speed',
             'tray_download_speed_list',
             self.max_download_speed,
-            'downloading.svg',
+            'downloading',
         )
 
     def on_tray_setbwup(self, widget, data=None):
@@ -411,7 +405,7 @@ class SystemTray(component.Component):
             'max_upload_speed',
             'tray_upload_speed_list',
             self.max_upload_speed,
-            'seeding.svg',
+            'seeding',
         )
 
     def _on_window_hide(self, widget, data=None):

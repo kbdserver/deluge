@@ -289,7 +289,7 @@ class TorrentView(ListView, component.Component):
             _('Downloaded'),
             funcs.cell_data_size,
             [TYPE_UINT64],
-            status_field=['all_time_download'],
+            status_field=['total_done'],
             default=False,
         )
         self.add_func_column(
@@ -444,6 +444,8 @@ class TorrentView(ListView, component.Component):
         self.search_box = SearchBox(self)
         self.permanent_status_keys = ['owner']
         self.columns_to_update = []
+
+        self.icon_size = component.get('MainWindow').window.get_scale_factor() * 16
 
     def start(self):
         """Start the torrentview"""

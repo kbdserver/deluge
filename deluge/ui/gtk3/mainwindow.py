@@ -99,6 +99,7 @@ class MainWindow(component.Component):
             'main_window.tabs.ui',
             'main_window.tabs.menu_file.ui',
             'main_window.tabs.menu_peer.ui',
+            'main_window.tabs.menu_trackers.ui',
         ]
         for filename in ui_filenames:
             self.main_builder.add_from_file(
@@ -109,6 +110,7 @@ class MainWindow(component.Component):
         self.window.set_icon(get_deluge_icon())
         self.tabsbar_pane = self.main_builder.get_object('tabsbar_pane')
         self.sidebar_pane = self.main_builder.get_object('sidebar_pane')
+        self.scale = self.window.get_scale_factor()
 
         # Keep a list of components to pause and resume when changing window state.
         self.child_components = ['TorrentView', 'StatusBar', 'TorrentDetails']
@@ -152,17 +154,20 @@ class MainWindow(component.Component):
 
     def first_show(self):
         self.main_builder.prev_connect_signals(self.gtk_builder_signals_holder)
-        self.sidebar_pane.set_position(self.config['sidebar_position'])
-        self.tabsbar_pane.set_position(self.config['tabsbar_position'])
 
         if not (
             self.config['start_in_tray'] and self.config['enable_system_tray']
         ) and not self.window.get_property('visible'):
             log.debug('Showing window')
+            initial_sidebar_position = self.config['sidebar_position']
+            initial_tabsbar_position = self.config['tabsbar_position']
             self.show()
 
         while Gtk.events_pending():
             Gtk.main_iteration()
+
+        self.sidebar_pane.set_position(initial_sidebar_position)
+        self.tabsbar_pane.set_position(initial_tabsbar_position)
 
     def show(self):
         component.resume(self.child_components)

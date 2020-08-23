@@ -76,8 +76,8 @@ class BaseDialog(Gtk.Dialog):
         self.deferred.callback(Gtk.ResponseType.DELETE_EVENT)
 
     def _on_response(self, widget, response):
-        self.destroy()
         self.deferred.callback(response)
+        self.destroy()
 
     def run(self):
         """

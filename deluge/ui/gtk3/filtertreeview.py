@@ -15,7 +15,7 @@ import logging
 import os
 import warnings
 
-from gi.repository import Gtk
+from gi.repository import Gtk, Gdk
 from gi.repository.GdkPixbuf import Pixbuf
 from gi.repository.Pango import EllipsizeMode
 
@@ -54,6 +54,9 @@ class FilterTreeView(component.Component):
         self.tracker_icons = component.get('TrackerIcons')
 
         self.sidebar = component.get('SideBar')
+
+        self.icon_size = component.get('MainWindow').window.get_scale_factor() * 16
+
         self.treeview = Gtk.TreeView()
         self.sidebar.add_tab(self.treeview, 'filters', 'Filters')
 
@@ -70,7 +73,7 @@ class FilterTreeView(component.Component):
         # icon cell
         self.cell_pix = Gtk.CellRendererPixbuf()
         column.pack_start(self.cell_pix, expand=False)
-        column.add_attribute(self.cell_pix, 'pixbuf', 4)
+        column.set_cell_data_func(self.cell_pix, self.cell_icon, 4)
         # label cell
         cell_label = Gtk.CellRendererText()
         cell_label.set_property('ellipsize', EllipsizeMode.END)
@@ -86,8 +89,8 @@ class FilterTreeView(component.Component):
 
         # Style
         self.treeview.set_show_expanders(True)
-        self.treeview.set_headers_visible(False)
-        self.treeview.set_level_indentation(-21)
+        self.treeview.set_headers_visible(True)
+        self.treeview.set_level_indentation(-8)
         # Force theme to use expander-size so we don't cut out entries due to indentation hack.
         Gtk.rc_parse_string(
             """style "treeview-style" {GtkTreeView::expander-size = 7}
@@ -99,6 +102,7 @@ class FilterTreeView(component.Component):
         self.create_model_filter()
 
         self.treeview.connect('button-press-event', self.on_button_press_event)
+
 
         # filtertree menu
         builder = Gtk.Builder()
@@ -113,6 +117,13 @@ class FilterTreeView(component.Component):
         # add Cat nodes:
         self.cat_nodes = {}
         self.filters = {}
+
+    def cell_icon(self, column, cell, model, row, data):
+        pixbuf = model.get_value(row, 4)
+        if pixbuf:
+            surface = Gdk.cairo_surface_create_from_pixbuf(
+                pixbuf, 0, None)
+            cell.set_property("surface", surface)
 
     def start(self):
         self.cat_nodes = {}
@@ -182,7 +193,7 @@ class FilterTreeView(component.Component):
                 self.treestore.set_value(self.filters[f], FILTER_COLUMN, False)
 
         if self.expand_rows:
-            self.treeview.expand_all()
+            self.treeview.expand_row(self.treestore.get_path(self.cat_nodes['state']), True)
             self.expand_rows = False
 
         if not self.selected_path:
@@ -253,7 +264,7 @@ class FilterTreeView(component.Component):
             pix = TRACKER_PIX.get(value, None)
 
         if pix:
-            return get_pixbuf('%s16.png' % pix)
+            return get_pixbuf_at_size('%s.svg' % pix, self.icon_size)
 
     def set_row_image(self, cat, value, filename):
         pix = get_pixbuf_at_size(filename, 16)

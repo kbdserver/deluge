@@ -101,6 +101,7 @@ class FilesTab(Tab):
         render = Gtk.CellRendererPixbuf()
         column.pack_start(render, False)
         column.add_attribute(render, 'gicon', 6)
+        render.set_property('xpad', 5)
         render = Gtk.CellRendererText()
         render.set_property('editable', True)
         render.connect('edited', self._on_filename_edited)
@@ -498,7 +499,7 @@ class FilesTab(Tab):
         """This is a callback for showing the right-click context menu."""
         log.debug('on_button_press_event')
         # We only care about right-clicks
-        if event.button == 3:
+        if event.button == 3 and event.window == self.listview.get_bin_window():
             x, y = event.get_coords()
             cursor_path = self.listview.get_path_at_pos(int(x), int(y))
             if not cursor_path:

@@ -71,12 +71,12 @@ def get_pixbuf(filename):
 
 
 # Status icons.. Create them from file only once to avoid constantly re-creating them.
-icon_downloading = get_pixbuf('downloading16.png')
-icon_seeding = get_pixbuf('seeding16.png')
-icon_inactive = get_pixbuf('inactive16.png')
-icon_alert = get_pixbuf('alert16.png')
-icon_queued = get_pixbuf('queued16.png')
-icon_checking = get_pixbuf('checking16.png')
+icon_downloading = 'downloading'
+icon_seeding = 'seeding'
+icon_inactive = 'inactive'
+icon_alert = 'alert'
+icon_queued = 'queued'
+icon_checking = 'checking'
 
 
 def get_pixbuf_at_size(filename, size):

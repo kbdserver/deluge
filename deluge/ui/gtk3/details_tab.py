@@ -28,8 +28,6 @@ class DetailsTab(Tab):
         self.add_tab_widget('summary_name', None, ('name',))
         self.add_tab_widget('summary_total_size', fsize, ('total_size',))
         self.add_tab_widget('summary_num_files', str, ('num_files',))
-        self.add_tab_widget('summary_completed', fdate_or_dash, ('completed_time',))
-        self.add_tab_widget('summary_date_added', fdate, ('time_added',))
         self.add_tab_widget('summary_torrent_path', None, ('download_location',))
         self.add_tab_widget('summary_hash', str, ('hash',))
         self.add_tab_widget('summary_comments', str, ('comment',))

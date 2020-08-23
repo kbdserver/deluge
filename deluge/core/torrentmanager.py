@@ -1350,8 +1350,11 @@ class TorrentManager(component.Component):
         except (RuntimeError, KeyError):
             return
 
+        aaa = alert.handle.status().num_complete
+        bbb = alert.handle.status().num_incomplete
+
         # Set the tracker status for the torrent
-        torrent.set_tracker_status('Announce OK')
+        torrent.set_tracker_status('Announce OK', alert.url)
 
         # Check for peer information from the tracker, if none then send a scrape request.
         if (
@@ -1368,7 +1371,7 @@ class TorrentManager(component.Component):
             return
 
         # Set the tracker status for the torrent
-        torrent.set_tracker_status('Announce Sent')
+        torrent.set_tracker_status('Announce Sent', alert.url)
 
     def on_alert_tracker_warning(self, alert):
         """Alert handler for libtorrent tracker_warning_alert"""
@@ -1377,7 +1380,7 @@ class TorrentManager(component.Component):
         except (RuntimeError, KeyError):
             return
         # Set the tracker status for the torrent
-        torrent.set_tracker_status('Warning: %s' % decode_bytes(alert.message()))
+        torrent.set_tracker_status('Warning: %s' % decode_bytes(alert.message()), alert.url)
 
     def on_alert_tracker_error(self, alert):
         """Alert handler for libtorrent tracker_error_alert"""
@@ -1389,10 +1392,8 @@ class TorrentManager(component.Component):
         error_message = decode_bytes(alert.error_message())
         if not error_message:
             error_message = decode_bytes(alert.error.message())
-        log.debug(
-            'Tracker Error Alert: %s [%s]', decode_bytes(alert.message()), error_message
-        )
-        torrent.set_tracker_status('Error: ' + error_message)
+        log.debug('Tracker Error Alert: %s [%s]', decode_bytes(alert.message()), error_message)
+        torrent.set_tracker_status('Error: ' + error_message, alert.url)
 
     def on_alert_storage_moved(self, alert):
         """Alert handler for libtorrent storage_moved_alert"""
@@ -1517,7 +1518,7 @@ class TorrentManager(component.Component):
         except (RuntimeError, KeyError):
             return
 
-        new_name = decode_bytes(alert.new_name())
+        new_name = decode_bytes(alert.name)
         log.debug('index: %s name: %s', alert.index, new_name)
 
         # We need to see if this file index is in a waiting_on_folder dict

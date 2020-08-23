@@ -177,28 +177,28 @@ class StatusBar(component.Component):
         )
 
         self.download_item = self.add_item(
-            image=get_pixmap('downloading16.png'),
+            icon='downloading',
             callback=self._on_download_item_clicked,
             tooltip=_('Download Speed (Limit)'),
             pack_start=True,
         )
 
         self.upload_item = self.add_item(
-            image=get_pixmap('seeding16.png'),
+            icon='seeding',
             callback=self._on_upload_item_clicked,
             tooltip=_('Upload Speed (Limit)'),
             pack_start=True,
         )
 
         self.traffic_item = self.add_item(
-            image=get_pixmap('traffic16.png'),
+            icon='traffic',
             callback=self._on_traffic_item_clicked,
             tooltip=_('Protocol Traffic (Down:Up)'),
             pack_start=True,
         )
 
         self.dht_item = StatusBarItem(
-            image=get_pixmap('dht16.png'), tooltip=_('DHT Nodes')
+            icon='dht', tooltip=_('DHT Nodes')
         )
 
         self.diskspace_item = self.add_item(
@@ -475,14 +475,14 @@ class StatusBar(component.Component):
                 _('Download Speed Limit'),
                 _('Set the maximum download speed'),
                 _('K/s'),
-                'downloading.svg',
+                'downloading',
                 self.max_download_speed,
             ),
             'max_upload_speed': (
                 _('Upload Speed Limit'),
                 _('Set the maximum upload speed'),
                 _('K/s'),
-                'seeding.svg',
+                'seeding',
                 self.max_upload_speed,
             ),
             'max_connections_global': (

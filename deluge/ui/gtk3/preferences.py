@@ -1377,7 +1377,6 @@ class Preferences(component.Component):
                         parent=self.pref_dialog,
                         details=failure.getErrorMessage(),
                     ).run()
-
             if response_id == Gtk.ResponseType.OK:
                 client.core.create_account(username, password, authlevel).addCallback(
                     add_ok

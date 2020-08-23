@@ -23,7 +23,7 @@ gi.require_version('Gdk', '3.0')  # NOQA: E402
 
 # isort:imports-thirdparty
 from gi.repository.GLib import set_prgname
-from gi.repository.Gtk import Builder, ResponseType
+from gi.repository.Gtk import Builder, ResponseType, IconTheme
 from twisted.internet import defer, gtk3reactor
 from twisted.internet.error import ReactorAlreadyInstalledError
 from twisted.internet.task import LoopingCall
@@ -43,6 +43,7 @@ from deluge.common import (
     get_default_download_dir,
     osx_check,
     windows_check,
+    get_pixmap,
 )
 from deluge.configmanager import ConfigManager, get_config_dir
 from deluge.error import DaemonRunningError, LibtorrentImportError
@@ -190,6 +191,9 @@ class GtkUI(object):
 
         # We make sure that the UI components start once we get a core URI
         client.set_disconnect_callback(self.__on_disconnect)
+
+        # Append deluge/ui/data/pixmaps folder to the icon search path
+        IconTheme.get_default().append_search_path(get_pixmap(''))
 
         self.trackericons = TrackerIcons()
         self.sessionproxy = SessionProxy()
