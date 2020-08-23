@@ -514,6 +514,7 @@ _package_data['deluge'] = [
     'ui/data/pixmaps/*.ico',
     'ui/data/pixmaps/*.gif',
     'ui/data/pixmaps/flags/*.png',
+    'ui/data/pixmaps/flags/*.svg',
     'plugins/*.egg',
     'i18n/*/LC_MESSAGES/*.mo',
 ]
