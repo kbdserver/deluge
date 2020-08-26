@@ -13,7 +13,8 @@ import logging
 import os.path
 import cairo
 
-from gi.repository.GdkPixbuf import Pixbuf
+from gi.repository import Gio
+from gi.repository.GdkPixbuf import Pixbuf, InterpType
 from gi.repository.Gdk import cairo_set_source_pixbuf
 from gi.repository.Gtk import (
     Builder,
@@ -23,9 +24,7 @@ from gi.repository.Gtk import (
     ListStore,
     TreeViewColumn,
     TreeViewColumnSizing,
-    Orientation,
-    Label,
-    Box,
+    TreePath
 )
 
 import deluge.common
@@ -278,13 +277,22 @@ class PeersTab(Tab):
 
         if country not in self.cached_flag_pixbufs:
             # We haven't created a pixbuf for this country yet
+            file = Gio.file_new_for_path("/usr/share/iso-flag-png/" + country.lower() + ".png")
+            if file.query_exists(None):
+                hi_dpi = True
+                path = file.get_path()
+            else:
+                hi_dpi = False
+                path = deluge.common.resource_filename(
+                            'deluge',
+                            os.path.join('ui', 'data', 'pixmaps', 'flags', country.lower() + '.png'),
+                        )
             try:
-                self.cached_flag_pixbufs[country] = Pixbuf.new_from_file_at_scale(
-                    deluge.common.resource_filename(
-                        'deluge',
-                        os.path.join('ui', 'data', 'pixmaps', 'flags', country.lower() + '.svg'),
-                    ), -1, 16 * scale, True
-                )
+                if hi_dpi:
+                    self.cached_flag_pixbufs[country] = Pixbuf.new_from_file_at_scale(path, -1, 192, True)
+                else:
+                    self.cached_flag_pixbufs[country] = Pixbuf.new_from_file(path)
+
             except Exception as ex:
                 log.debug('Unable to load flag: %s', ex)
                 return None
@@ -311,9 +319,6 @@ class PeersTab(Tab):
                     self.liststore.set_value(row, 4, peer['up_speed'])
                 if peer['country'] != values[2]:
                     self.liststore.set_value(row, 5, peer['country'])
-                    self.liststore.set_value(
-                        row, 0, self.get_flag_pixbuf(peer['country'])
-                    )
                 if peer['flags'] != values[5]:
                     self.liststore.set_value(row, 9, peer['flags'])
                 if peer['seed']:
@@ -358,7 +363,7 @@ class PeersTab(Tab):
 
                 row = self.liststore.append(
                     [
-                        self.get_flag_pixbuf(peer['country']),
+                        None,
                         peer_ip,
                         peer['client'],
                         peer['down_speed'],
@@ -390,14 +395,22 @@ class PeersTab(Tab):
             return True
 
     def _on_query_tooltip(self, widget, x, y, keyboard_tip, tooltip):
+
         tooltip_row, x, y, model, path, _iter = widget.get_tooltip_context(
             x, y, keyboard_tip)
         if tooltip_row:
             column = widget.get_path_at_pos(x, y)[1]
             if column.get_title() == '':
-                country_code = model.get(_iter, 5)[0]
-                if country_code != '  ' and country_code in COUNTRIES:
-                    tooltip.set_text(COUNTRIES[country_code])
+                country = model.get(_iter, 5)[0]
+                if country != '  ' and country in COUNTRIES:
+                    tooltip.set_markup('<b>%s</b>' % COUNTRIES[country])
+                    req_icon_height = 96
+                    pix = self.get_flag_pixbuf(country)
+                    if pix.get_height() >= req_icon_height:
+                        tooltip.set_icon(
+                            pix.scale_simple(
+                                pix.get_width() * req_icon_height / pix.get_height(), req_icon_height, InterpType.TILES)
+                        )
                     # widget here is self.listview
                     widget.set_tooltip_cell(tooltip, path, column, None)
                     return True
@@ -446,18 +459,21 @@ class PeersTab(Tab):
             cell.set_property("surface", None)
             return
 
+        cell_height = self.listview.get_cell_area(TreePath(0), column).height - 2
         w = pix.get_width()
         h = pix.get_height()
+        if w <= 16 or h <= 16:
+            cell_height = 16
+        w = round(w * cell_height / h * scale)
+        h = round(cell_height * scale)
+        pix = pix.scale_simple(w, h, InterpType.TILES)
+
         surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
         surface.set_device_scale(scale, scale)
         cr = cairo.Context(surface)
         cr.scale(1.0 / scale, 1.0 / scale)
         cairo_set_source_pixbuf(cr, pix, 0, 0)
         cr.paint_with_alpha(0.9)
-        cr.rectangle(0, 0, w, h)
-        cr.set_source_rgba(0.2, 0.2, 0.2, 1)
-        cr.set_line_width(scale)
-        cr.stroke()
         cell.set_property("surface", surface)
 
     def cell_encrypt_icon(self, column, cell, model, row, data):
